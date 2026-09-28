@@ -15,6 +15,12 @@
       "expiry": "2026-10-28",
       "group": "ایرانی",
       "active": true
+    },
+    "amir": {
+      "name": "Amir",
+      "expiry": "2026-09-29",
+      "group": "ایرانی",
+      "active": true
     }
   }
 }
