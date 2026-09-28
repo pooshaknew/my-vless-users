@@ -1,4 +1,4 @@
-name: Friend 1 Subscription
+name: Update subscriptions
 
 on:
   schedule:
@@ -16,23 +16,63 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Update subscription
+      - name: Update subscriptions
+        shell: bash
         run: |
-          EXPIRY="2026-10-28"
+          set -e
+
           TODAY=$(date -u +%Y-%m-%d)
 
-          if [ "$TODAY" \< "$EXPIRY" ]; then
-            curl -L \
-              "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/filtered/subs/vless.txt" \
-              -o users/friend1.txt
-          else
-            : > users/friend1.txt
-          fi
+          mkdir -p users
+
+          # فایل‌های قبلی را پاک می‌کنیم
+          rm -f users/*.txt
+
+          # پردازش کاربران
+          jq -r '
+            .users
+            | to_entries[]
+            | [
+                .key,
+                .value.name,
+                .value.expiry,
+                .value.group,
+                (.value.active // true)
+              ]
+            | @tsv
+          ' config.json |
+          while IFS=$'\t' read -r ID NAME EXPIRY GROUP ACTIVE
+          do
+
+            if [ "$ACTIVE" != "true" ]; then
+              continue
+            fi
+
+            if [ "$TODAY" \> "$EXPIRY" ] || [ "$TODAY" = "$EXPIRY" ]; then
+              continue
+            fi
+
+            SOURCE=$(jq -r --arg GROUP "$GROUP" '.groups[$GROUP].source // empty' config.json)
+
+            if [ -z "$SOURCE" ]; then
+              echo "Source not found for group: $GROUP"
+              continue
+            fi
+
+            echo "Updating $ID ($NAME)"
+
+            curl -L --fail "$SOURCE" -o "users/$ID.txt"
+
+          done
 
       - name: Save changes
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add users/friend1.txt
-          git diff --cached --quiet || git commit -m "Update friend 1 subscription"
+
+          git add -A
+
+          git diff --cached --quiet || git commit -m "Update subscriptions"
+
           git push
