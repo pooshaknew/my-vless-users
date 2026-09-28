@@ -18,7 +18,7 @@ jobs:
 
       - name: Update subscription
         run: |
-          EXPIRY="2026-09-28"
+          EXPIRY="2026-10-28"
           TODAY=$(date -u +%Y-%m-%d)
 
           if [ "$TODAY" \< "$EXPIRY" ]; then
