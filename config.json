@@ -3,17 +3,13 @@
     "default": {
       "name": "VPN 1",
       "source": "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/filtered/subs/vless.txt"
-    },
-    "iran": {
-      "name": "VPN ایران",
-      "source": "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Splitted-By-Protocol/vless.txt"
     }
   },
   "users": {
     "ali-ewin": {
       "name": "Ali ewin",
       "expiry": "2026-10-28",
-      "group": "default",
+      "group": "iran",
       "active": true
     }
   }
