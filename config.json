@@ -5,12 +5,5 @@
       "source": "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/filtered/subs/vless.txt"
     }
   },
-  "users": {
-    "ali-ewin": {
-      "name": "Ali ewin",
-      "expiry": "2026-10-28",
-      "group": "ایرانی",
-      "active": true
-    }
-  }
+  "users": {}
 }
