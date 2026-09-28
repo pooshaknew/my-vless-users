@@ -3,14 +3,56 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>پنل مدیریت VLESS</title>
+<title>مدیریت VLESS</title>
+
 <style>
-body{font-family:Arial,sans-serif;max-width:700px;margin:auto;padding:20px;background:#f4f4f4}
-.box{background:white;padding:18px;margin-bottom:15px;border-radius:12px}
-input,button{width:100%;padding:12px;margin:6px 0;box-sizing:border-box}
-button{background:#111;color:white;border:0;border-radius:8px}
-h1{font-size:24px}
+body{
+  font-family:Arial,sans-serif;
+  max-width:760px;
+  margin:auto;
+  padding:16px;
+  background:#f4f5f7;
+  color:#222
+}
+.box{
+  background:#fff;
+  padding:16px;
+  margin:12px 0;
+  border-radius:14px;
+  border:1px solid #ddd
+}
+input,select,button{
+  width:100%;
+  box-sizing:border-box;
+  padding:12px;
+  margin:6px 0;
+  border-radius:9px;
+  border:1px solid #bbb;
+  font-size:15px
+}
+button{
+  background:#111;
+  color:white;
+  border:0
+}
+button.red{background:#b42318}
+button.gray{background:#666}
+h1{font-size:23px}
+h2{font-size:19px}
 .small{font-size:13px;color:#666}
+.user{
+  border-top:1px solid #eee;
+  padding-top:14px;
+  margin-top:14px
+}
+.link{
+  word-break:break-all;
+  background:#f1f1f1;
+  padding:8px;
+  border-radius:7px;
+  font-size:12px
+}
+.hidden{display:none}
 </style>
 </head>
 
@@ -19,185 +61,636 @@ h1{font-size:24px}
 <h1>پنل مدیریت VLESS</h1>
 
 <div class="box">
-<h3>اتصال به GitHub</h3>
+  <h2>ورود</h2>
 
-<input id="token" type="password" placeholder="GitHub Token">
+  <input id="token"
+         type="password"
+         placeholder="GitHub Token">
 
-<button onclick="loadUsers()">ورود به پنل</button>
+  <button onclick="login()">ورود به پنل</button>
 
-<p id="status" class="small"></p>
+  <p id="status" class="small"></p>
 </div>
 
-<div id="panel" style="display:none">
+<div id="panel" class="hidden">
 
 <div class="box">
-<h3>Friend 1</h3>
+  <h2>➕ افزودن کاربر</h2>
 
-<label>تاریخ انقضا</label>
-<input id="date1" type="date">
+  <input id="newName"
+         placeholder="اسم کاربر، مثلاً Ali">
 
-<button onclick="saveUser(1)">ذخیره Friend 1</button>
+  <input id="newExpiry"
+         type="date">
 
-<p>
-لینک اشتراک:
-<br>
-<code>
-https://raw.githubusercontent.com/pooshaknew/my-vless-users/main/users/friend1.txt
-</code>
-</p>
+  <select id="newGroup"></select>
+
+  <button onclick="addUser()">ساخت کاربر</button>
 </div>
 
 <div class="box">
-<h3>Friend 2</h3>
+  <h2>👥 کاربران</h2>
+  <div id="users"></div>
+</div>
 
-<label>تاریخ انقضا</label>
-<input id="date2" type="date">
+<div class="box">
+  <h2>📡 گروه‌های VPN</h2>
 
-<button onclick="saveUser(2)">ذخیره Friend 2</button>
+  <input id="groupKey"
+         placeholder="شناسه گروه، مثلاً iran">
 
-<p>
-لینک اشتراک:
-<br>
-<code>
-https://raw.githubusercontent.com/pooshaknew/my-vless-users/main/users/friend2.txt
-</code>
-</p>
+  <input id="groupName"
+         placeholder="نام نمایشی گروه">
+
+  <input id="groupSource"
+         placeholder="لینک اصلی اشتراک VLESS">
+
+  <button onclick="addGroup()">افزودن / تغییر گروه</button>
+
+  <div id="groups"></div>
 </div>
 
 </div>
 
 <script>
 
-const owner="pooshaknew";
-const repo="my-vless-users";
+const OWNER = "pooshaknew";
+const REPO = "my-vless-users";
 
-let token="";
+let TOKEN = "";
+let CONFIG_SHA = "";
+let CONFIG = null;
 
-async function github(path,options={}){
+function api(path, options = {}){
 
-const response=await fetch(
-`https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
-{
-...options,
-headers:{
-"Authorization":`Bearer ${token}`,
-"Accept":"application/vnd.github+json",
-"Content-Type":"application/json"
-}
-});
+  return fetch(
+    "https://api.github.com/repos/"
+    + OWNER + "/" + REPO + "/contents/" + path,
+    {
+      ...options,
+      headers:{
+        "Authorization":"Bearer " + TOKEN,
+        "Accept":"application/vnd.github+json",
+        "Content-Type":"application/json"
+      }
+    }
+  ).then(async r => {
 
-if(!response.ok){
+    if(!r.ok){
+      throw new Error(await r.text());
+    }
 
-throw new Error(await response.text());
+    return r.json();
 
-}
-
-return response.json();
-
-}
-
-async function loadUsers(){
-
-token=document.getElementById("token").value.trim();
-
-if(!token){
-
-alert("توکن GitHub را وارد کن");
-
-return;
+  });
 
 }
 
-try{
+function decodeBase64(str){
 
-await github("users/friend1.txt");
+  str = str.replace(/\n/g,"");
 
-document.getElementById("panel").style.display="block";
+  const binary = atob(str);
 
-document.getElementById("status").innerText=
-"اتصال موفق بود.";
+  const bytes = Uint8Array.from(
+    binary,
+    c => c.charCodeAt(0)
+  );
 
-}catch(error){
+  return new TextDecoder().decode(bytes);
+}
 
-document.getElementById("status").innerText=
-"خطا در اتصال به GitHub";
+function encodeBase64(str){
+
+  const bytes =
+    new TextEncoder().encode(str);
+
+  let binary = "";
+
+  bytes.forEach(
+    b => binary += String.fromCharCode(b)
+  );
+
+  return btoa(binary);
+}
+
+async function login(){
+
+  TOKEN =
+    document.getElementById("token")
+    .value.trim();
+
+  if(!TOKEN){
+
+    alert("توکن را وارد کن");
+
+    return;
+  }
+
+  try{
+
+    const file =
+      await api("config.json");
+
+    CONFIG_SHA = file.sha;
+
+    CONFIG =
+      JSON.parse(
+        decodeBase64(file.content)
+      );
+
+    if(!CONFIG.users)
+      CONFIG.users = {};
+
+    if(!CONFIG.groups)
+      CONFIG.groups = {};
+
+    document
+      .getElementById("panel")
+      .classList.remove("hidden");
+
+    document
+      .getElementById("status")
+      .innerText =
+      "اتصال موفق بود";
+
+    render();
+
+  }catch(e){
+
+    alert(
+      "خطا در اتصال:\n" + e.message
+    );
+
+  }
 
 }
 
-}
+function render(){
 
-async function saveUser(number){
+  renderGroups();
 
-const date=document.getElementById("date"+number).value;
+  renderUsers();
 
-if(!date){
-
-alert("تاریخ انقضا را انتخاب کن");
-
-return;
+  fillGroupSelect();
 
 }
 
-try{
+function renderGroups(){
 
-const workflow=await github(".github/workflows/main.yml");
+  const box =
+    document.getElementById("groups");
 
-const decoder=new TextDecoder();
+  box.innerHTML = "";
 
-const binary=atob(workflow.content.replace(/\n/g,""));
+  Object.entries(CONFIG.groups)
+  .forEach(([key,g]) => {
 
-const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+    const div =
+      document.createElement("div");
 
-let yaml=new TextDecoder().decode(bytes);
+    div.className = "user";
 
-const pattern=
-new RegExp(`EXPIRY${number}="[^"]*"`);
+    div.innerHTML = `
+      <b>${escapeHtml(g.name)}</b>
+      <p class="small">
+        شناسه: ${escapeHtml(key)}
+      </p>
 
-if(!pattern.test(yaml)){
+      <div class="link">
+        ${escapeHtml(g.source)}
+      </div>
 
-alert("EXPIRY این کاربر در main.yml پیدا نشد");
+      <button class="red"
+        onclick="deleteGroup('${escapeJs(key)}')">
+        حذف گروه
+      </button>
+    `;
 
-return;
+    box.appendChild(div);
+
+  });
+
+}
+
+function renderUsers(){
+
+  const box =
+    document.getElementById("users");
+
+  box.innerHTML = "";
+
+  const entries =
+    Object.entries(CONFIG.users);
+
+  if(entries.length === 0){
+
+    box.innerHTML =
+      "<p class='small'>هنوز کاربری ساخته نشده.</p>";
+
+    return;
+  }
+
+  entries.forEach(([id,u]) => {
+
+    const div =
+      document.createElement("div");
+
+    div.className = "user";
+
+    const link =
+      location.origin
+      + location.pathname
+      .replace(/\/$/,"")
+      + "/users/" + id;
+
+    div.innerHTML = `
+      <h3>${escapeHtml(u.name)}</h3>
+
+      <label>تاریخ انقضا</label>
+
+      <input
+        id="date_${escapeHtml(id)}"
+        type="date"
+        value="${escapeHtml(u.expiry)}">
+
+      <label>گروه VPN</label>
+
+      <select id="group_${escapeHtml(id)}">
+        ${groupOptions(u.group)}
+      </select>
+
+      <label>وضعیت</label>
+
+      <select id="active_${escapeHtml(id)}">
+        <option value="true"
+          ${u.active !== false ? "selected":""}>
+          فعال
+        </option>
+
+        <option value="false"
+          ${u.active === false ? "selected":""}>
+          غیرفعال
+        </option>
+      </select>
+
+      <p class="small">
+        شناسه: ${escapeHtml(id)}
+      </p>
+
+      <div class="link">
+        ${escapeHtml(
+          "https://raw.githubusercontent.com/"
+          + OWNER + "/"
+          + REPO
+          + "/main/users/"
+          + id + ".txt"
+        )}
+      </div>
+
+      <button
+        onclick="copyLink('${escapeJs(id)}')">
+        📋 کپی لینک
+      </button>
+
+      <button
+        onclick="saveUser('${escapeJs(id)}')">
+        💾 ذخیره
+      </button>
+
+      <button class="red"
+        onclick="deleteUser('${escapeJs(id)}')">
+        🗑 حذف کاربر
+      </button>
+    `;
+
+    box.appendChild(div);
+
+  });
 
 }
 
-yaml=yaml.replace(
-pattern,
-`EXPIRY${number}="${date}"`
-);
+function groupOptions(selected){
 
-const encoded=
-btoa(unescape(encodeURIComponent(yaml)));
-
-await github(".github/workflows/main.yml",{
-
-method:"PUT",
-
-body:JSON.stringify({
-
-message:`Update friend${number} expiry`,
-
-content:encoded,
-
-sha:workflow.sha
-
-})
-
-});
-
-alert(
-`تاریخ Friend ${number} ذخیره شد`
-);
-
-}catch(error){
-
-alert("خطا: "+error.message);
+  return Object.entries(CONFIG.groups)
+    .map(([key,g]) => `
+      <option value="${escapeHtml(key)}"
+        ${key === selected ? "selected":""}>
+        ${escapeHtml(g.name)}
+      </option>
+    `)
+    .join("");
 
 }
+
+function fillGroupSelect(){
+
+  document.getElementById("newGroup").innerHTML =
+    Object.entries(CONFIG.groups)
+    .map(([key,g]) => `
+      <option value="${escapeHtml(key)}">
+        ${escapeHtml(g.name)}
+      </option>
+    `)
+    .join("");
+
+}
+
+async function saveConfig(message){
+
+  const text =
+    JSON.stringify(CONFIG,null,2);
+
+  const result =
+    await api("config.json",{
+
+      method:"PUT",
+
+      body:JSON.stringify({
+
+        message:message,
+
+        content:encodeBase64(text),
+
+        sha:CONFIG_SHA
+
+      })
+
+    });
+
+  CONFIG_SHA = result.content.sha;
+
+}
+
+async function addUser(){
+
+  const name =
+    document.getElementById("newName")
+    .value.trim();
+
+  const expiry =
+    document.getElementById("newExpiry")
+    .value;
+
+  const group =
+    document.getElementById("newGroup")
+    .value;
+
+  if(!name || !expiry || !group){
+
+    alert("اسم، تاریخ و گروه را کامل کن");
+
+    return;
+  }
+
+  let id =
+    name
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g,"-")
+    .replace(/^-+|-+$/g,"");
+
+  if(!id)
+    id = "user";
+
+  let base = id;
+  let n = 2;
+
+  while(CONFIG.users[id]){
+
+    id = base + "-" + n;
+
+    n++;
+
+  }
+
+  CONFIG.users[id] = {
+
+    name:name,
+
+    expiry:expiry,
+
+    group:group,
+
+    active:true
+
+  };
+
+  try{
+
+    await saveConfig(
+      "Add user " + id
+    );
+
+    alert("کاربر ساخته شد");
+
+    document.getElementById("newName").value="";
+
+    render();
+
+  }catch(e){
+
+    alert("خطا:\n"+e.message);
+
+  }
+
+}
+
+async function saveUser(id){
+
+  const date =
+    document.getElementById(
+      "date_"+id
+    ).value;
+
+  const group =
+    document.getElementById(
+      "group_"+id
+    ).value;
+
+  const active =
+    document.getElementById(
+      "active_"+id
+    ).value === "true";
+
+  CONFIG.users[id].expiry = date;
+
+  CONFIG.users[id].group = group;
+
+  CONFIG.users[id].active = active;
+
+  try{
+
+    await saveConfig(
+      "Update user " + id
+    );
+
+    alert("ذخیره شد");
+
+    render();
+
+  }catch(e){
+
+    alert("خطا:\n"+e.message);
+
+  }
+
+}
+
+async function deleteUser(id){
+
+  if(!confirm(
+    "کاربر حذف شود؟"
+  )) return;
+
+  delete CONFIG.users[id];
+
+  try{
+
+    await saveConfig(
+      "Delete user " + id
+    );
+
+    render();
+
+  }catch(e){
+
+    alert("خطا:\n"+e.message);
+
+  }
+
+}
+
+async function addGroup(){
+
+  const key =
+    document.getElementById(
+      "groupKey"
+    ).value.trim();
+
+  const name =
+    document.getElementById(
+      "groupName"
+    ).value.trim();
+
+  const source =
+    document.getElementById(
+      "groupSource"
+    ).value.trim();
+
+  if(!key || !name || !source){
+
+    alert("هر سه قسمت را کامل کن");
+
+    return;
+  }
+
+  CONFIG.groups[key] = {
+
+    name:name,
+
+    source:source
+
+  };
+
+  try{
+
+    await saveConfig(
+      "Update VPN group " + key
+    );
+
+    alert("گروه ذخیره شد");
+
+    document.getElementById("groupKey").value="";
+    document.getElementById("groupName").value="";
+    document.getElementById("groupSource").value="";
+
+    render();
+
+  }catch(e){
+
+    alert("خطا:\n"+e.message);
+
+  }
+
+}
+
+async function deleteGroup(key){
+
+  if(key === "default"){
+
+    alert("گروه default را حذف نکن");
+
+    return;
+  }
+
+  if(!confirm(
+    "گروه حذف شود؟"
+  )) return;
+
+  delete CONFIG.groups[key];
+
+  try{
+
+    await saveConfig(
+      "Delete VPN group " + key
+    );
+
+    render();
+
+  }catch(e){
+
+    alert("خطا:\n"+e.message);
+
+  }
+
+}
+
+function copyLink(id){
+
+  const link =
+    "https://raw.githubusercontent.com/"
+    + OWNER + "/"
+    + REPO
+    + "/main/users/"
+    + id + ".txt";
+
+  if(navigator.clipboard){
+
+    navigator.clipboard.writeText(link);
+
+    alert("لینک کپی شد");
+
+  }else{
+
+    prompt(
+      "لینک:",
+      link
+    );
+
+  }
+
+}
+
+function escapeHtml(s){
+
+  return String(s)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+
+}
+
+function escapeJs(s){
+
+  return String(s)
+    .replace(/\\/g,"\\\\")
+    .replace(/'/g,"\\'");
 
 }
 
 </script>
 
 </body>
-  </html>
+</html>
