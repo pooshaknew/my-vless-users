@@ -3,10 +3,6 @@
     "default": {
       "name": "VPN 1",
       "source": "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/filtered/subs/vless.txt"
-    },
-    "ایرانی": {
-      "name": "گروه ایرانی",
-      "source": "https://raw.githubusercontent.com/ZendanTeam/SS44-sub/main/SS44-gold.txt?utm_source=chatgpt.com"
     }
   },
   "users": {
