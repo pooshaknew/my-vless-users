@@ -9,12 +9,5 @@
       "source": "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Splitted-By-Protocol/vless.txt"
     }
   },
-  "users": {
-    "user": {
-      "name": "فروش اولم مشتری اول",
-      "expiry": "2026-10-31",
-      "group": "گروه Epodonios",
-      "active": true
-    }
-  }
+  "users": {}
 }
