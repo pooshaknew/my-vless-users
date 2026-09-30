@@ -7,10 +7,6 @@
     "گروه Epodonios": {
       "name": "سرویس نامحدود یک",
       "source": "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Splitted-By-Protocol/vless.txt"
-    },
-    "Moshtari": {
-      "name": "Forosh",
-      "source": "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Splitted-By-Protocol/vless.txt"
     }
   },
   "users": {}
